@@ -32,11 +32,18 @@ RUN apk update && \
         /opt/aria2/.aria2/tracker.sh ; \
     rm -rf /var/cache/apk/*
 
-COPY --chmod=755 --from=builder /app/bin/alist ./
+
+# Copy backend binary and entrypoint
+COPY --chmod=755 --from=builder /app/bin/alist ./bin/alist
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
-RUN /entrypoint.sh version
+
+# Download and extract frontend dist
+RUN mkdir -p public/dist \
+ && wget https://github.com/alist-org/alist-web/releases/latest/download/dist.tar.gz \
+ && tar -zxvf dist.tar.gz -C public/dist --strip-components=1 \
+ && rm dist.tar.gz
 
 ENV PUID=0 PGID=0 UMASK=022 RUN_ARIA2=${INSTALL_ARIA2}
 VOLUME /opt/alist/data/
 EXPOSE 5244 5245
-CMD [ "/entrypoint.sh" ]
+CMD [ "bash", "-c", "HTTP_PORT=${PORT:-5244} bin/alist server" ]
